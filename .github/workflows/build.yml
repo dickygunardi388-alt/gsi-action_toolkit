@@ -163,7 +163,20 @@ jobs:
 
       - name: Upload to Transfer.sh
         run: |
-          curl --upload-file jalur/ke/folder/Lunaris-3.12-GSI_treble_arm64-ab-GAPPS-Official-VNDK-EXT4-20260814.img.xz https://transfer.sh/Lunaris-GSI.img.xz
+          # Perintah ini akan mencari file .img.xz di seluruh folder dan menyimpan lokasinya
+          FILE_PATH=$(find . -type f -name "*.img.xz" | head -n 1)
+          
+          # Cek apakah file ditemukan
+          if [ -z "$FILE_PATH" ]; then
+            echo "Error: File GSI (.img.xz) tidak ditemukan!"
+            exit 1
+          fi
+          
+          echo "Menemukan file di: $FILE_PATH"
+          echo "Mulai proses upload..."
+          
+          # Upload file yang ditemukan ke Transfer.sh
+          curl --upload-file "$FILE_PATH" https://transfer.sh/Lunaris-GSI.img.xz
 
       - name: Upload to Release
         uses: softprops/action-gh-release@v1
