@@ -80,6 +80,10 @@ on:
           - 7z
         default: none
 
+# WAJIB ADA: Memberikan izin agar GitHub Actions bisa membuat Release
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-24.04
@@ -161,34 +165,30 @@ jobs:
           compression-level: 0
           if-no-files-found: error
 
-      - name: Upload to Transfer.sh
+      - name: Upload to Bashupload
+        continue-on-error: true
         run: |
-          # Perintah ini akan mencari file .img.xz di seluruh folder dan menyimpan lokasinya
-          FILE_PATH=$(find . -type f -name "*.img.xz" | head -n 1)
+          FILE_PATH="${{ steps.artifact_finder.outputs.artifact_path }}"
           
-          # Cek apakah file ditemukan
           if [ -z "$FILE_PATH" ]; then
-            echo "Error: File GSI (.img.xz) tidak ditemukan!"
+            echo "Error: File GSI tidak ditemukan!"
             exit 1
           fi
           
           echo "Menemukan file di: $FILE_PATH"
           echo "Mulai proses upload..."
-          
-          # Upload file yang ditemukan ke Transfer.sh
-          curl --upload-file "$FILE_PATH" https://transfer.sh/Lunaris-GSI.img.xz
+          curl https://bashupload.com/ -T "$FILE_PATH"
 
       - name: Upload to Release
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            workspace/jalur/ke/folder/Lunaris-*.img.xz
-            workspace/jalur/ke/folder/Lunaris-*.img.xz.sha256
+            ${{ steps.artifact_finder.outputs.artifact_path }}
+            ${{ steps.artifact_finder.outputs.checksum_path }}
           tag_name: "Build-${{ github.run_number }}"
           name: "GSI Lunaris Build #${{ github.run_number }}"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
 
       - name: Upload checksum
         uses: actions/upload-artifact@v4
