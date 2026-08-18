@@ -83,6 +83,11 @@ on:
 jobs:
   build:
     runs-on: ubuntu-24.04
+    # Wajib "write" agar step "Upload to Release" bisa membuat release baru
+    # menggunakan GITHUB_TOKEN bawaan. Tanpa ini, token default bisa read-only
+    # tergantung setting repo/organisasi.
+    permissions:
+      contents: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -147,7 +152,7 @@ jobs:
           # Find GSI image file in the workspace directory (excluding checksums)
           ARTIFACT_PATH=$(find workspace -maxdepth 1 -type f ! -name "*.sha256" | head -n 1)
           CHECKSUM_PATH="${ARTIFACT_PATH}.sha256"
-          
+
           echo "artifact_path=$ARTIFACT_PATH" >> $GITHUB_OUTPUT
           echo "checksum_path=$CHECKSUM_PATH" >> $GITHUB_OUTPUT
           echo "artifact_name=$(basename "$ARTIFACT_PATH")" >> $GITHUB_OUTPUT
@@ -161,43 +166,55 @@ jobs:
           compression-level: 0
           if-no-files-found: error
 
-      - name: Upload to Bashupload
+      - name: Upload to Gofile
+        # continue-on-error supaya jika Gofile down/limit, workflow tetap lanjut
+        # ke step Release & upload checksum, tidak langsung gagal total.
         continue-on-error: true
+        env:
+          FILE_PATH: ${{ steps.artifact_finder.outputs.artifact_path }}
+          # Opsional: tambahkan repo secret GOFILE_TOKEN agar file tersimpan
+          # di akun Gofile permanen (bukan guest folder yang bisa kedaluwarsa).
+          GOFILE_TOKEN: ${{ secrets.GOFILE_TOKEN }}
         run: |
-          # Perintah ini akan mencari file .img.xz di seluruh folder dan menyimpan lokasinya
-          FILE_PATH=$(find . -type f -name "*.img.xz" | head -n 1)
-          
-          # Cek apakah file ditemukan
-          if [ -z "$FILE_PATH" ]; then
-            echo "Error: File GSI (.img.xz) tidak ditemukan!"
+          if [ -z "$FILE_PATH" ] || [ ! -f "$FILE_PATH" ]; then
+            echo "::error::File GSI tidak ditemukan di path: $FILE_PATH"
             exit 1
           fi
-          
-          echo "Menemukan file di: $FILE_PATH"
-          echo "Mulai proses upload..."
-          
-          # Upload file yang ditemukan ke server alternatif yang lebih stabil
-          curl https://bashupload.com/ -T "$FILE_PATH"
 
+          echo "Mengunggah $(basename "$FILE_PATH") ke Gofile..."
+
+          if [ -n "$GOFILE_TOKEN" ]; then
+            RESPONSE=$(curl -sS -X POST https://upload.gofile.io/uploadfile \
+              -H "Authorization: Bearer $GOFILE_TOKEN" \
+              -F "file=@${FILE_PATH}")
+          else
+            RESPONSE=$(curl -sS -X POST https://upload.gofile.io/uploadfile \
+              -F "file=@${FILE_PATH}")
           fi
-          
-          echo "Menemukan file di: $FILE_PATH"
-          echo "Mulai proses upload..."
-          
-          # Upload file yang ditemukan ke Transfer.sh
-          curl --upload-file "$FILE_PATH" https://transfer.sh/Lunaris-GSI.img.xz
+
+          STATUS=$(echo "$RESPONSE" | jq -r '.status // "error"')
+
+          if [ "$STATUS" != "ok" ]; then
+            echo "::warning::Upload ke Gofile gagal. Response: $RESPONSE"
+            exit 1
+          fi
+
+          DOWNLOAD_PAGE=$(echo "$RESPONSE" | jq -r '.data.downloadPage')
+          echo "✅ Berhasil diunggah ke Gofile: $DOWNLOAD_PAGE"
+          echo "### 📦 Gofile Download Link" >> "$GITHUB_STEP_SUMMARY"
+          echo "$DOWNLOAD_PAGE" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload to Release
+        continue-on-error: true
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            workspace/jalur/ke/folder/Lunaris-*.img.xz
-            workspace/jalur/ke/folder/Lunaris-*.img.xz.sha256
+            ${{ steps.artifact_finder.outputs.artifact_path }}
+            ${{ steps.artifact_finder.outputs.checksum_path }}
           tag_name: "Build-${{ github.run_number }}"
           name: "GSI Lunaris Build #${{ github.run_number }}"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
 
       - name: Upload checksum
         uses: actions/upload-artifact@v4
