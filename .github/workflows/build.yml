@@ -161,7 +161,8 @@ jobs:
           compression-level: 0
           if-no-files-found: error
 
-      - name: Upload to Transfer.sh
+      - name: Upload to Bashupload
+        continue-on-error: true
         run: |
           # Perintah ini akan mencari file .img.xz di seluruh folder dan menyimpan lokasinya
           FILE_PATH=$(find . -type f -name "*.img.xz" | head -n 1)
@@ -170,6 +171,14 @@ jobs:
           if [ -z "$FILE_PATH" ]; then
             echo "Error: File GSI (.img.xz) tidak ditemukan!"
             exit 1
+          fi
+          
+          echo "Menemukan file di: $FILE_PATH"
+          echo "Mulai proses upload..."
+          
+          # Upload file yang ditemukan ke server alternatif yang lebih stabil
+          curl https://bashupload.com/ -T "$FILE_PATH"
+
           fi
           
           echo "Menemukan file di: $FILE_PATH"
