@@ -244,7 +244,34 @@ if [ "$REMOVE_VNDK" = "true" ]; then
         fi
     done
 fi
-
+# --- SUNTIKAN SETINGAN TREBLE REDMI 10 (SELENE) ---
+echo "persist.sys.phh.hardware_media=true" >> system/build.prop
+echo "persist.sys.phh.biometrics_strong=true" >> system/build.prop
+echo "persist.sys.phh.securize=true" >> system/build.prop
+echo "persist.sys.phh.expose_aux_camera=true" >> system/build.prop
+echo "persist.sys.phh.camera.hal3=true" >> system/build.prop
+echo "persist.sys.phh.disable_fast_audio=true" >> system/build.prop
+echo "persist.sys.phh.disable_voice_call_in=true" >> system/build.prop
+echo "persist.sys.phh.system_wide_bt_hal=true" >> system/build.prop
+echo "debug.sf.disable_gl_backpressure=1" >> system/build.prop
+echo "debug.sf.disable_hwc_backpressure=1" >> system/build.prop
+echo "debug.sf.latch_unsignaled=1" >> system/build.prop
+echo "debug.sf.auto_latch_unsignaled=1" >> system/build.prop
+echo "debug.sf.disable_backpressure=1" >> system/build.prop
+echo "debug.sf.disable_hwc=1" >> system/build.prop
+echo "persist.sys.phh.aod=true" >> system/build.prop
+echo "persist.sys.phh.xiaomi.dt2w=true" >> system/build.prop
+echo "persist.sys.phh.mtk_touch_rotation=true" >> system/build.prop
+echo "persist.sys.phh.mtk_ged_kpi=true" >> system/build.prop
+echo "persist.sys.phh.mtk_force_cognitive=true" >> system/build.prop
+fi
+# --- MENGHAPUS / HIDE TREBLE APP ---
+# Ini akan membuat HP kamu terlihat seperti custom ROM murni tanpa embel-embel GSI
+rm -rf system/app/TrebleApp
+rm -rf system/app/PhhTrebleApp
+rm -rf system/priv-app/TrebleApp
+rm -rf system/priv-app/PhhTrebleApp
+fi
 # 5. Apply debloating
 if [ "$DEBLOAT" = "true" ]; then
     log_header "Debloat system partition"
